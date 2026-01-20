@@ -16,14 +16,22 @@ def run_game(
     RESECTION,
     NODES,
     rounds=1000,
-    max_sigma=4
+    max_sigma=4,
+    verbose=True
     ):
+
     os.makedirs(output_dir, exist_ok=True)
     df = pd.read_csv(os.path.join(main_folder, f"cvs_pairs.csv"))
-    connectivity_measures = list(df['CM'].unique())
+    connectivity_measures = ['PAC'] #list(df['CM'].unique())
     nodes = NODES[subject_id]
     resection = RESECTION[subject_id]
     group_size = min(int(len(nodes) * 0.1), len(resection))
+
+    if verbose:
+        print(f"\n▶ Running Epigame for subject {subject_id}")
+        print(f"  Nodes: {len(nodes)} | Node group size: {group_size}")
+        print(f"  Connectivity measures: {len(connectivity_measures)}")
+        print(f"  Rounds per game: {rounds}")
 
     class Player:
         def __init__(self, AI, deck, name, n_in_hand=5):
@@ -169,7 +177,13 @@ def run_game(
             seen.add(candidate)
             players.append(candidate)
     players = sorted(players)
-    for measure in connectivity_measures:
+
+    if verbose: print(f"  Generated {len(players)} player groups")
+
+    for i,measure in enumerate(connectivity_measures):
+
+        if verbose: print(f"\n  [{i+1}/{len(connectivity_measures)}] Connectivity measure: {measure}")
+
         df_sub_cm = df_sub[df_sub.CM == measure]
         hands = []  # initialize hands, a list of tuples (player, deck)
         for group_labels in players:
@@ -181,6 +195,9 @@ def run_game(
         n_cards = len(hands[0][1])
         game_score = {tuple(p):[] for p in [hand[0] for hand in hands]}
         for turn in range(rounds):
+
+            if verbose and turn % max(1, rounds // 10) == 0: print(f"Round {turn}/{rounds}")
+
             for r in range(n_cards):
                 game = [Player(AI=rn_choice, deck=hand[1], name=tuple(hand[0]), n_in_hand=n_cards) for hand in hands]
                 play(*game)
@@ -205,6 +222,15 @@ def run_game(
                 "group_size": group_size,
                 "game_scores": game_score
             }
+            if verbose:
+                print(
+                    f"    σ={sigma}: "
+                    f"N_winners={n_winners}, "
+                    f"overlap_ratio={ratio:.3f}" if ratio is not None else
+                    f"    σ={sigma}: N_winners={n_winners}, overlap_ratio=None"
+                )
     out_path = os.path.join(output_dir, f"scores_sub{subject_id}.p")
     dump(result_all_cm, open(out_path, "wb"))
-    print(f"Saved: {out_path}")
+    if verbose:
+        print(f"\n✔ Finished subject {subject_id}")
+        print(f"✔ Results saved to: {out_path}")
