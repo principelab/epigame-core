@@ -8,7 +8,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/yourname/epigame-core
+git clone https://github.com/ivkarla/epigame-core
 cd epigame-core
 conda create -n epigame python=3.10
 conda activate epigame

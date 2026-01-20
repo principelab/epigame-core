@@ -1,13 +1,13 @@
 ## `NODES.p`
 
-- Format: Python `dict` with subject ID as key, list of node IDs as value
-- Example: `{ 1: [0, 1, 2, ...] }`
+- Format: Python `dict` with subject ID as key, list of node labels as value
+- Example: `{ 1: ['A1-A2', 'A2-A3', ...] }`
 
 ## `RESECTION.p`
 
-- Format: Python `dict` with subject ID as key, list of resection node IDs as value
+- Format: Python `dict` with subject ID as key, list of resection node labels as value
 - Must match keys in `NODES.p`
-- Example: `{ 1: [4, 10] }`
+- Example: `{ 1: ['A1', 'A2', 'A3'] }` or `{ 1: ['A1-A2', 'A2-A3'] }`
 
 ## `.mat` Files
 

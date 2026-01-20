@@ -36,69 +36,69 @@ if missing:
     raise FileNotFoundError(msg)
 
 # Detect all subject IDs based on interictal files
-# subject_ids = sorted({
-#     int(re.match(r"(\d+)_interictal\.mat", f).group(1))
-#     for f in os.listdir(input_folder)
-#     if re.match(r"\d+_interictal\.mat", f)
-# })
-# print(f"Found {len(subject_ids)} subjects: {subject_ids}")
+subject_ids = sorted({
+    int(re.match(r"(\d+)_interictal\.mat", f).group(1))
+    for f in os.listdir(input_folder)
+    if re.match(r"\d+_interictal\.mat", f)
+})
+print(f"Found {len(subject_ids)} subjects: {subject_ids}")
 
-# #Step 1: Connectivity analysis
-# for subject_id in subject_ids:
-#     print(f"\nComputing connectivity for subject {subject_id}")
+#Step 1: Connectivity analysis
+for subject_id in subject_ids:
+    print(f"\nComputing connectivity for subject {subject_id}")
 
-#     interictal_path = os.path.join(input_folder, f"{subject_id}_interictal.mat")
-#     preictal_path = os.path.join(input_folder, f"{subject_id}_preictal.mat")
+    interictal_path = os.path.join(input_folder, f"{subject_id}_interictal.mat")
+    preictal_path = os.path.join(input_folder, f"{subject_id}_preictal.mat")
 
-#     prep = preprocess_from_mat(interictal_path, preictal_path, fs=500, band=None)
-#     run_connectivity_matrices(prep, subject_id, bands=None, output_dir=connectivity_dir)
+    prep = preprocess_from_mat(interictal_path, preictal_path, fs=500, band=None)
+    run_connectivity_matrices(prep, subject_id, bands=None, output_dir=connectivity_dir)
 
-#     for band in [(0,4),(4,8),(8,13),(13,30),(30,70),(70,150)]:
-#         prep_band = preprocess_from_mat(interictal_path, preictal_path, fs=500, band=band)
-#         run_connectivity_matrices(prep_band, subject_id, bands=band, output_dir=connectivity_dir)
+    for band in [(0,4),(4,8),(8,13),(13,30),(30,70),(70,150)]:
+        prep_band = preprocess_from_mat(interictal_path, preictal_path, fs=500, band=band)
+        run_connectivity_matrices(prep_band, subject_id, bands=band, output_dir=connectivity_dir)
 
-# #Step 2: Cross-validation per CM
-# connectivity_measures = ["PAC", "SCR", "SCI", "PLV", "PLI", "CC"]
+#Step 2: Cross-validation per CM
+connectivity_measures = ["PAC", "SCR", "SCI", "PLV", "PLI", "CC"]
 
-# for subject_id in subject_ids:
-#     for bands in [None, (0,4),(4,8),(8,13),(13,30),(30,70),(70,150)]:
-#         cm_suffix = "" if bands is None else f"-{bands[0]}-{bands[1]}"
-#         ext = f"{subject_id}-{bands[0]}-{bands[1]}" if bands else f"{subject_id}"
+for subject_id in subject_ids:
+    for bands in [None, (0,4),(4,8),(8,13),(13,30),(30,70),(70,150)]:
+        cm_suffix = "" if bands is None else f"-{bands[0]}-{bands[1]}"
+        ext = f"{subject_id}-{bands[0]}-{bands[1]}" if bands else f"{subject_id}"
 
-#         for measure in connectivity_measures:
-#             file = os.path.join(connectivity_dir, f"{subject_id}-{measure}{cm_suffix}.prep")
-#             if not os.path.exists(file):
-#                 print(f"Skipping missing file: {file}")
-#                 continue
+        for measure in connectivity_measures:
+            file = os.path.join(connectivity_dir, f"{subject_id}-{measure}{cm_suffix}.prep")
+            if not os.path.exists(file):
+                print(f"Skipping missing file: {file}")
+                continue
 
-#             cm_struct = REc.load(file).data
-#             run_classification_pipeline(
-#                 cm_struct=cm_struct,
-#                 subject_id=subject_id,
-#                 measure=measure,
-#                 bands=bands,
-#                 output_dir=results_dir
-#             )
+            cm_struct = REc.load(file).data
+            run_classification_pipeline(
+                cm_struct=cm_struct,
+                subject_id=subject_id,
+                measure=measure,
+                bands=bands,
+                output_dir=results_dir
+            )
 
-# #Step 3: Aggregate CVS scores
-# cvs_csv = os.path.join(main_folder, "cvs_pairs.csv")
-# aggregate_cv_scores(
-#     result_dir=results_dir,
-#     subject_ids=subject_ids,
-#     output_csv=cvs_csv
-# )
+#Step 3: Aggregate CVS scores
+cvs_csv = os.path.join(main_folder, "cvs_pairs.csv")
+aggregate_cv_scores(
+    result_dir=results_dir,
+    subject_ids=subject_ids,
+    output_csv=cvs_csv
+)
 
-# #Step 4: Game simulation
-# for subject_id in subject_ids:
-#     print(f"\nRunning game simulation for subject {subject_id}")
-#     run_game(
-#         subject_id=subject_id,
-#         main_folder=main_folder,
-#         output_dir=game_scores_dir,
-#         RESECTION=RESECTION,
-#         NODES=NODES,
-#         max_sigma=4
-#     )
+#Step 4: Game simulation
+for subject_id in subject_ids:
+    print(f"\nRunning game simulation for subject {subject_id}")
+    run_game(
+        subject_id=subject_id,
+        main_folder=main_folder,
+        output_dir=game_scores_dir,
+        RESECTION=RESECTION,
+        NODES=NODES,
+        max_sigma=4
+    )
 
 subject_ids = []
 pattern = re.compile(r"^scores_sub(\d+)\.p$")

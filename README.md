@@ -1,6 +1,6 @@
 # Epigame-core
 
-**Epigame** is a pipeline for seizure outcome prediction in epilepsy surgery, based on a competition framework of seizure generation. The pipeline localizes the networks (intracranial EEG channels as nodes) which present the highest connectivity changes between interictal and preictal state.
+**Epigame** is a pipeline for outcome prediction in epilepsy surgery, based on a competition framework of seizure generation. The pipeline localizes the networks (intracranial EEG channels as nodes) which present the highest connectivity changes between interictal and preictal state.
 
 ## Features
 - Loading .mat files
