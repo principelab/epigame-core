@@ -245,6 +245,20 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
     interictal_raw = mat_interictal['sz_data'][0, 0]  # column 0: signal
     fs_interictal = float(mat_interictal['sz_data'][0, 1])  # column 1: sampling frequency
 
+    # Load resected channels if present in column 3 of .mat file
+    resection = None
+    try:
+        resection = mat_preictal['sz_data'][0, 3]  
+        # Convert to list of strings if it's a MATLAB char array or cell array
+        if isinstance(resection, np.ndarray):
+            if resection.dtype.kind in ['U', 'S']:  # string array
+                resection = resection.tolist()
+            else:
+                # flatten 1-element arrays or cell arrays
+                resection = [str(r[0]) if hasattr(r, "__getitem__") else str(r) for r in resection]
+    except IndexError:
+        print("No resection info found in .mat file; leaving resection=None")
+
     # Resample to target_fs if needed
     if fs_preictal != target_fs:
         n_samples = int(preictal_raw.shape[1] * target_fs / fs_preictal)
@@ -287,6 +301,6 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
     i = list(range(len(x)))
     nodes = node_labels  # channel names
 
-    prep = struct(y=np.array(y), i=np.array(i), x_prep=x, nodes=nodes)
+    prep = struct(y=np.array(y), i=np.array(i), x_prep=x, nodes=nodes, resection=resection)
     return prep
 
