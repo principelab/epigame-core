@@ -151,6 +151,10 @@ def analyze_epoch(epoch, method, dtail=True, **opts):
 
 def connectivity_analysis(epochs, method, dtail=True, **opts):
     print('Connectivity measure:', method.__name__)
+
+    if "bands" in opts and opts["bands"] is not None:
+        print(f"Frequency band: {opts['bands']}")
+
     return Parallel(n_jobs=-1)(
         delayed(analyze_epoch)(e, method, dtail, **opts) for e in epochs
     )
@@ -166,17 +170,17 @@ def run_connectivity_matrices(epochs, subject_id, bands=None, output_dir="data/o
         cm = struct(y=epochs.y, i=epochs.i, nodes=epochs.nodes)
 
         if measure == "SCR":
-            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=False))
+            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=False, bands=bands))
         elif measure == "SCI":
-            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=True))
+            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=True, bands=bands))
         elif measure == "PLV":
-            cm._set(X = connectivity_analysis(epochs.x_prep, phaselock))
+            cm._set(X = connectivity_analysis(epochs.x_prep, phaselock, bands=bands))
         elif measure == "PLI":
-            cm._set(X = connectivity_analysis(epochs.x_prep, phaselag))
+            cm._set(X = connectivity_analysis(epochs.x_prep, phaselag, bands=bands))
         elif measure == "CC":
-            cm._set(X = connectivity_analysis(epochs.x_prep, cross_correlation))
+            cm._set(X = connectivity_analysis(epochs.x_prep, cross_correlation, bands=bands))
         elif measure == "PAC":
-            cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500))
+            cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500, bands=bands))
 
         os.makedirs(output_dir, exist_ok=True)
         suffix = f"{subject_id}-{measure}.prep" if bands is None else f"{subject_id}-{measure}-{bands}.prep"
