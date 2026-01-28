@@ -53,7 +53,7 @@ def compute_connectivity_for_patient(
         prep = preprocess_from_mat(
             interictal_path,
             preictal_path,
-            fs=fs,
+            target_fs=fs,
             band=band
         )
         run_connectivity_matrices(
