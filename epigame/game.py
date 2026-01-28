@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import random
-from pickle import dump
+from pickle import dump, load
 import os
 
 # Set a random seed for reproducibility
@@ -13,8 +13,6 @@ def run_game(
     subject_id,
     main_folder,
     output_dir,
-    RESECTION,
-    NODES,
     rounds=1000,
     max_sigma=4,
     verbose=True
@@ -22,9 +20,13 @@ def run_game(
 
     os.makedirs(output_dir, exist_ok=True)
     df = pd.read_csv(os.path.join(main_folder, f"cvs_pairs.csv"))
-    connectivity_measures = ['PAC'] #list(df['CM'].unique())
-    nodes = NODES[subject_id]
-    resection = RESECTION[subject_id]
+    connectivity_measures = list(df['CM'].unique())
+    nodes, resection = None, None
+    # Load nodes for this subject
+    with open(f"data/input/{subject_id}_NODES.p", "rb") as f: nodes = load(f)[subject_id]
+    # Load resection for this subject
+    with open(f"data/input/{subject_id}_RESECTION.p", "rb") as f: resection = load(f)[subject_id]
+
     group_size = min(int(len(nodes) * 0.1), len(resection))
 
     if verbose:
