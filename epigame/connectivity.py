@@ -1,5 +1,6 @@
 from epigame.utils import struct, REc
 import os
+import pickle
 import numpy as np
 from joblib import Parallel, delayed
 from scipy.io import loadmat
@@ -183,7 +184,11 @@ def run_connectivity_matrices(epochs, subject_id, bands=None, output_dir="data/o
             cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500, bands=bands))
 
         os.makedirs(output_dir, exist_ok=True)
-        suffix = f"{subject_id}-{measure}.prep" if bands is None else f"{subject_id}-{measure}-{bands}.prep"
+        if bands is None: suffix = f"{subject_id}-{measure}.prep"
+        else:
+            # replace dot with underscore in band string (e.g., 0.1-4 -> 0_1-4)
+            band_str = f"{bands[0]}-{bands[1]}".replace('.', '_')
+            suffix = f"{subject_id}-{measure}-{band_str}.prep"
         REc(cm).save(os.path.join(output_dir, suffix))
 
 def sliding_window_epochs(filtered_data, fs, span_ms=1000, step_ms=125):
@@ -231,10 +236,44 @@ def match_channels(interictal_raw, preictal_raw):
     return eeg_interictal_matched, eeg_preictal_matched, common_labels
 
 
+def save_nodes_pickle(node_labels, subject_id, input_dir="data/input/"):
+    """
+    Save node labels as a pickle file in the external dictionary format.
+
+    Args:
+        node_labels (list of str): list of channel names for this subject
+        subject_id (int or str): subject identifier
+        input_dir (str): directory to save the pickle file
+    """
+    nodes_dict = {subject_id: node_labels}
+    filepath = os.path.join(input_dir, f"{subject_id}_NODES.p")
+    with open(filepath, "wb") as f:
+        pickle.dump(nodes_dict, f)
+    print(f"Nodes file saved to {filepath}")
+
+
+def save_resection_pickle(resection_list, subject_id, input_dir="data/input/"):
+    """
+    Save resection info as a pickle file in the external dictionary format.
+
+    Args:
+        resection_list (list of str): list of resected channels for this subject
+        subject_id (int or str): subject identifier
+        input_dir (str): directory to save the pickle file
+    """
+    resection_dict = {subject_id: resection_list}
+    filepath = os.path.join(input_dir, f"{subject_id}_RESECTION.p")
+    with open(filepath, "wb") as f:
+        pickle.dump(resection_dict, f)
+    print(f"Resection file saved to {filepath}")
+
+
 def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None):
     # Constants
     span, step = 1000, 500  # in ms
     min_woi_duration = 60000  # in ms
+
+    subject_id = int(os.path.basename(preictal_path).split("_")[0])
 
     # Load raw data
     mat_preictal = loadmat(preictal_path)
@@ -258,6 +297,9 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
                 resection = [str(r[0]) if hasattr(r, "__getitem__") else str(r) for r in resection]
     except IndexError:
         print("No resection info found in .mat file; leaving resection=None")
+
+    if resection is not None:
+        save_resection_pickle(resection, subject_id=subject_id, input_dir="data/input/")
 
     # Resample to target_fs if needed
     if fs_preictal != target_fs:
@@ -300,6 +342,8 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
     y = [1]*len(preictal_epochs) + [0]*len(interictal_epochs)
     i = list(range(len(x)))
     nodes = node_labels  # channel names
+
+    save_nodes_pickle(nodes, subject_id=subject_id, input_dir="data/input/")
 
     prep = struct(y=np.array(y), i=np.array(i), x_prep=x, nodes=nodes, resection=resection)
     return prep
