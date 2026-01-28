@@ -3,7 +3,7 @@ import os
 import numpy as np
 from joblib import Parallel, delayed
 from scipy.io import loadmat
-from scipy.signal import hilbert, csd, butter
+from scipy.signal import hilbert, csd, butter, resample
 from scipy.signal import iirnotch, butter, filtfilt
 
 def notch(data, fs, freq=50.0, Q=30.0):
@@ -227,14 +227,29 @@ def match_channels(interictal_raw, preictal_raw):
     return eeg_interictal_matched, eeg_preictal_matched, common_labels
 
 
-def preprocess_from_mat(interictal_path, preictal_path, fs=500, band=None):
+def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None):
     # Constants
     span, step = 1000, 500  # in ms
     min_woi_duration = 60000  # in ms
 
     # Load raw data
-    interictal_raw = loadmat(interictal_path)['sz_data'][0]
-    preictal_raw = loadmat(preictal_path)['sz_data'][0]
+    mat_preictal = loadmat(preictal_path)
+    preictal_raw = mat_preictal['sz_data'][0, 0]  # column 0: signal
+    fs_preictal = float(mat_preictal['sz_data'][0, 1])  # column 1: sampling frequency
+
+    mat_interictal = loadmat(interictal_path)
+    interictal_raw = mat_interictal['sz_data'][0, 0]  # column 0: signal
+    fs_interictal = float(mat_interictal['sz_data'][0, 1])  # column 1: sampling frequency
+
+    # Resample to target_fs if needed
+    if fs_preictal != target_fs:
+        n_samples = int(preictal_raw.shape[1] * target_fs / fs_preictal)
+        preictal_raw = resample(preictal_raw, n_samples, axis=1)
+
+    if fs_interictal != target_fs:
+        n_samples = int(interictal_raw.shape[1] * target_fs / fs_interictal)
+        interictal_raw = resample(interictal_raw, n_samples, axis=1)
+
 
     # Align and trim channels
     interictal, preictal, node_labels = match_channels(interictal_raw, preictal_raw)
@@ -244,16 +259,16 @@ def preprocess_from_mat(interictal_path, preictal_path, fs=500, band=None):
     preictal = preictal.T
 
     # Filtering
-    interictal = notch(interictal, fs)
-    preictal = notch(preictal, fs)
+    interictal = notch(interictal, target_fs)
+    preictal = notch(preictal, target_fs)
 
     if band is not None:
-        interictal = bandpass(interictal, band)
-        preictal = bandpass(preictal, band)
+        interictal = bandpass(interictal, band, fs=target_fs)
+        preictal = bandpass(preictal, band, fs=target_fs)
 
     # Create overlapping epochs
-    interictal_epochs = sliding_window_epochs(interictal, fs, span, step)
-    preictal_epochs = sliding_window_epochs(preictal, fs, span, step)
+    interictal_epochs = sliding_window_epochs(interictal, target_fs, span, step)
+    preictal_epochs = sliding_window_epochs(preictal, target_fs, span, step)
 
     # Ensure minimum epoch number
     min_epochs = int(min_woi_duration / step) - 1
