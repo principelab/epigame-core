@@ -8,18 +8,13 @@ main_dir = "data/output"
 game_scores_dir = os.path.join(main_dir, "game_scores")
 connectivity_dir = os.path.join(main_dir, "connectivity")
 
-input_dir = "data/input"
-RESECTION = load(open(os.path.join(input_dir, "RESECTION.p"), "rb"))
-NODES = load(open(os.path.join(input_dir, "NODES.p"), "rb"))
-
-
 def compute_connectivity_for_patient(
     subject_id,
     interictal_path,
     preictal_path,
     connectivity_dir=connectivity_dir,
     fs=500,
-    bands=[None,(0,4),(4,8),(8,13),(13,30),(30,70),(70,150)]):
+    bands=[None,(0.1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]):
     """
     Generate Epigame connectivity dependencies for a single patient.
 
@@ -68,8 +63,6 @@ def run_game_for_patient(
     subject_id,
     main_dir=main_dir,
     game_scores_dir=game_scores_dir,
-    RESECTION=RESECTION,
-    NODES=NODES,
     max_sigma=4):
     """
     Run the Epigame simulation for a single patient.
@@ -106,8 +99,6 @@ def run_game_for_patient(
         subject_id=subject_id,
         main_folder=main_dir,
         output_dir=game_scores_dir,
-        RESECTION=RESECTION,
-        NODES=NODES,
         max_sigma=max_sigma
     )
     score_file = os.path.join(game_scores_dir, f"scores_sub{subject_id}.p")
@@ -122,8 +113,6 @@ def epigame_predict_from_mat(
     main_dir=main_dir,
     connectivity_dir=connectivity_dir,
     game_scores_dir=game_scores_dir,
-    RESECTION=RESECTION,
-    NODES=NODES,
     fs=500,
     max_sigma=4
 ):
@@ -157,8 +146,6 @@ def epigame_predict_from_mat(
         subject_id,
         main_dir,
         game_scores_dir,
-        RESECTION,
-        NODES,
         max_sigma=max_sigma
     )
 
