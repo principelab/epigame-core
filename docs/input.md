@@ -5,7 +5,7 @@
 
 ## `RESECTION.p`
 
-- Generated from the resection column of the input .mat file (resection format: **list** of labels)
+- Generated from the resection column of the input .mat file (must be added by user as Python **list** of labels)
 - Format: Python `dict` with subject ID as key, list of resection node labels as value
 - Must match keys in `NODES.p`
 - Example: `{ 1: ['A1', 'A2', 'A3'] }` or `{ 1: ['A1-A2', 'A2-A3'] }`
