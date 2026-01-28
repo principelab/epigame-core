@@ -8,10 +8,6 @@ main_folder = "data/output"
 connectivity_dir = os.path.join(main_folder, "connectivity")
 game_scores_dir = os.path.join(main_folder, "game_scores")
 
-# Load RESECTION and NODES dictionaries
-RESECTION = load(open(os.path.join(input_folder, "RESECTION.p"), "rb"))
-NODES = load(open(os.path.join(input_folder, "NODES.p"), "rb"))
-
 # Choose a subject to test
 subject_id = 1   # change to a valid ID you know exists
 
@@ -29,8 +25,6 @@ score = epigame_predict_from_mat(
     preictal_path=preictal_path,
     main_dir=main_folder,
     connectivity_dir=connectivity_dir,
-    game_scores_dir=game_scores_dir,
-    RESECTION=RESECTION,
-    NODES=NODES,
+    game_scores_dir=game_scores_dir
 )
 
