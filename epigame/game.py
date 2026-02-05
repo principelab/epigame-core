@@ -22,9 +22,9 @@ def run_game(
     df = pd.read_csv(os.path.join(main_folder, f"cvs_pairs.csv"))
     connectivity_measures = list(df['CM'].unique())
     nodes, resection = None, None
-    # Load nodes for this subject
+    # Load nodes for this subject, e.g. [0, 1, 2, ..., N-1]
     with open(f"data/input/{subject_id}_NODES.p", "rb") as f: nodes = load(f)[subject_id]
-    # Load resection for this subject
+    # Load resection for this subject, e.g. [3, 7, 12]
     with open(f"data/input/{subject_id}_RESECTION.p", "rb") as f: resection = load(f)[subject_id]
 
     group_size = min(int(len(nodes) * 0.1), len(resection))
@@ -105,7 +105,7 @@ def run_game(
     def summary_stat(cvs_list):
         return (max(cvs_list)*min(cvs_list)) / (np.mean(cvs_list))
 
-    def match_resection(group_scores, resection):
+    def match_resection_string(group_scores, resection):
         """
         Matches resection items to group_scores.
         Automatically detects if resection contains electrodes (e.g., 'A1')
@@ -132,6 +132,11 @@ def run_game(
                 for player in group_scores
             }
         return resection_match
+    
+    def match_resection(group_scores, resection):
+        """Matches resection items to group_scores.
+        """
+        return {group: [n for n in group if n in resection] for group in group_scores}
 
     def check_winners(sorted_players, sigmas, resection, group_size):
         """
@@ -190,7 +195,7 @@ def run_game(
         hands = []  # initialize hands, a list of tuples (player, deck)
         for group_labels in players:
             if group_labels not in [hand[0] for hand in hands]:
-                split_labels = df_sub_cm['Labels'].str.split('<->', expand=True)
+                split_labels = df_sub_cm['Labels'].str.split('<->', expand=True).astype(int)
                 relevant_rows = df_sub_cm[((split_labels[0].isin(group_labels)) & split_labels[1].isin(group_labels))]
                 group_deck = list(relevant_rows['CVS'].apply(lambda x: summary_stat(list(map(float, x.strip('[]').split())))))
                 hands.append((group_labels, group_deck))

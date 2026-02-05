@@ -36,15 +36,14 @@ def classify_epochs(cm_struct, node_group, kratio=.1, random_state=31, **mopts):
     scores = cross_val_score(clf, X, Y, cv=cv)
     return scores
 
-def evaluate_nodes(pair, labels, results):
-    tag = f"{labels[pair[0]]}<->{labels[pair[1]]}"
+def evaluate_nodes(pair, results):
+    tag = f"{pair[0]}<->{pair[1]}"
     return (pair, tag, results)
 
 def run_classification_pipeline(cm_struct, subject_id, measure, bands=None, output_dir="data/output/results/", random_state=random_state):
     """Runs SVM-based classification across all node pairs on one connectivity measure."""
 
-    nodes = cm_struct.nodes
-    node_ids = list(range(len(nodes)))
+    node_ids = cm_struct.nodes
     node_pairs = list(combinations(node_ids, 2))
 
     print(f"Running classification for {measure} | {bands or 'PAC'}")
@@ -52,12 +51,12 @@ def run_classification_pipeline(cm_struct, subject_id, measure, bands=None, outp
     # Parallel classification for all node pairs
     results = Parallel(n_jobs=-1)(
         delayed(evaluate_nodes)(
-            pair, nodes, classify_epochs(cm_struct, pair, random_state=random_state)
+            pair, classify_epochs(cm_struct, pair, random_state=random_state)
         ) for pair in node_pairs
     )
 
     # Wrap result in struct
-    result_struct = struct(nodes=nodes, pairs=results)
+    result_struct = struct(nodes=node_ids, pairs=results)
     REc_result = REc(result_struct)
 
     # Save result

@@ -44,6 +44,17 @@ def bandpass(data, band, fs=500.0, order=4):
     b, a = butter(order, [low, high], btype='band')
     return filtfilt(b, a, data, axis=1)
 
+# Sanity check: sampling rate after resampling
+def check_fs(original_n_samples, original_fs, new_n_samples, target_fs, name):
+    orig_duration = original_n_samples / original_fs
+    new_duration = new_n_samples / target_fs
+    assert np.isclose(orig_duration, new_duration, rtol=1e-3), (
+        f"{name}: duration mismatch after resampling "
+        f"(orig={orig_duration:.3f}s, new={new_duration:.3f}s)"
+    )
+    print(f"{name}: resampled to {target_fs} Hz "
+          f"({original_n_samples} → {new_n_samples} samples)")
+
 def phaselock(signal1, signal2):
     """Computes the phase locking value between two notch-filtered signals.
     
@@ -181,7 +192,7 @@ def run_connectivity_matrices(epochs, subject_id, bands=None, output_dir="data/o
         elif measure == "CC":
             cm._set(X = connectivity_analysis(epochs.x_prep, cross_correlation, bands=bands))
         elif measure == "PAC":
-            cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500, bands=bands))
+            cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500))
 
         os.makedirs(output_dir, exist_ok=True)
         if bands is None: suffix = f"{subject_id}-{measure}.prep"
@@ -209,13 +220,13 @@ def sliding_window_epochs(filtered_data, fs, span_ms=1000, step_ms=125):
 import numpy as np
 from scipy.io import loadmat
 
-def match_channels(interictal_raw, preictal_raw):
-    # Extract EEG and labels
-    eeg_interictal = interictal_raw[0]
-    labels_interictal = [str(lbl[0][0]) for lbl in interictal_raw[1]]
-
-    eeg_preictal = preictal_raw[0]
-    labels_preictal = [str(lbl[0][0]) for lbl in preictal_raw[1]]
+def match_channels(eeg_interictal, labels_interictal,
+                   eeg_preictal, labels_preictal):
+    # Ensure the file is not transposed
+    assert eeg_interictal.ndim == 2, "Interictal EEG must be 2D (samples × channels)"
+    assert eeg_preictal.ndim == 2, "Preictal EEG must be 2D (samples × channels)"
+    assert len(labels_interictal) == eeg_interictal.shape[1]
+    assert len(labels_preictal) == eeg_preictal.shape[1]
 
     # Find common channels
     set_interictal = set(labels_interictal)
@@ -223,7 +234,7 @@ def match_channels(interictal_raw, preictal_raw):
     common_labels = sorted(set_interictal.intersection(set_preictal))
 
     if not common_labels:
-        raise ValueError("No common channels found between interictal and preictal data.")
+        raise ValueError("No common channels found between interictal and preictal files.")
 
     # Map indices
     interictal_indices = [labels_interictal.index(lbl) for lbl in common_labels]
@@ -236,7 +247,7 @@ def match_channels(interictal_raw, preictal_raw):
     return eeg_interictal_matched, eeg_preictal_matched, common_labels
 
 
-def save_nodes_pickle(node_labels, subject_id, input_dir="data/input/"):
+def save_nodes_pickle(n_nodes, subject_id, input_dir="data/input/"):
     """
     Save node labels as a pickle file in the external dictionary format.
 
@@ -245,27 +256,77 @@ def save_nodes_pickle(node_labels, subject_id, input_dir="data/input/"):
         subject_id (int or str): subject identifier
         input_dir (str): directory to save the pickle file
     """
-    nodes_dict = {subject_id: node_labels}
+    nodes_dict = {subject_id: list(range(n_nodes))}
     filepath = os.path.join(input_dir, f"{subject_id}_NODES.p")
     with open(filepath, "wb") as f:
         pickle.dump(nodes_dict, f)
-    print(f"Nodes file saved to {filepath}")
+    print(f"Nodes (indices) file saved to {filepath}")
 
 
-def save_resection_pickle(resection_list, subject_id, input_dir="data/input/"):
+def save_resection_pickle(resection_indices, subject_id, input_dir="data/input/"):
     """
     Save resection info as a pickle file in the external dictionary format.
 
     Args:
-        resection_list (list of str): list of resected channels for this subject
+        resection_indices (list of int): list of resected channel indices for this subject
         subject_id (int or str): subject identifier
         input_dir (str): directory to save the pickle file
     """
-    resection_dict = {subject_id: resection_list}
+    resection_dict = {subject_id: resection_indices}
     filepath = os.path.join(input_dir, f"{subject_id}_RESECTION.p")
     with open(filepath, "wb") as f:
         pickle.dump(resection_dict, f)
-    print(f"Resection file saved to {filepath}")
+    print(f"Resection (indices) file saved to {filepath}")
+
+
+def load_mat_wrapper(mat_path):
+    mat = loadmat(mat_path)
+    assert 'sz_data' in mat, "Missing 'sz_data' key in .mat file"
+    sz = mat['sz_data']
+
+    assert sz.ndim == 2 and sz.shape[1] >= 6, f"sz_data must be (1, >=6), got {sz.shape}"
+
+    signal = sz[0, 0]
+    labels = sz[0, 1]
+    fs = sz[0, 2]
+    soz = sz[0, 4]
+    resection = sz[0, 5]
+
+    # Convert fs to scalar
+    fs = float(np.squeeze(fs))
+
+    # labels: MATLAB cell array → list of strings
+    labels = [str(l[0]) if isinstance(l, np.ndarray) else str(l) for l in labels.squeeze()]
+
+    def normalize_channel_list(x):
+        """
+        Convert MATLAB nested arrays/cells to flat list of strings.
+        Example: array(['ROF5-6'], dtype='<U6') -> 'ROF5-6'
+        """
+        if x is None or len(np.atleast_1d(x)) == 0:
+            return []
+
+        flat_list = []
+        for i in np.atleast_1d(x):
+            # If nested ndarray, extract first element
+            while isinstance(i, np.ndarray) and i.size == 1:
+                i = i[0]
+            flat_list.append(str(i))
+        return flat_list
+
+    soz = normalize_channel_list(soz)
+    resection = normalize_channel_list(resection)
+
+    assert signal.ndim == 2, "Signal must be 2D (samples × channels)"
+    assert isinstance(fs, float), "fs must be scalar float"
+
+    return {
+        "signal": signal,
+        "labels": labels,
+        "fs": fs,
+        "soz": soz,
+        "resection": resection
+    }
 
 
 def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None):
@@ -275,44 +336,66 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
 
     subject_id = int(os.path.basename(preictal_path).split("_")[0])
 
-    # Load raw data
-    mat_preictal = loadmat(preictal_path)
-    preictal_raw = mat_preictal['sz_data'][0, 0]  # column 0: signal
-    fs_preictal = float(mat_preictal['sz_data'][0, 1])  # column 1: sampling frequency
+    # Load data
+    pre = load_mat_wrapper(preictal_path)
+    inter = load_mat_wrapper(interictal_path)
 
-    mat_interictal = loadmat(interictal_path)
-    interictal_raw = mat_interictal['sz_data'][0, 0]  # column 0: signal
-    fs_interictal = float(mat_interictal['sz_data'][0, 1])  # column 1: sampling frequency
+    eeg_preictal = pre["signal"]
+    eeg_interictal = inter["signal"]
 
-    # Load resected channels if present in column 3 of .mat file
-    resection = None
-    try:
-        resection = mat_preictal['sz_data'][0, 3]  
-        # Convert to list of strings if it's a MATLAB char array or cell array
-        if isinstance(resection, np.ndarray):
-            if resection.dtype.kind in ['U', 'S']:  # string array
-                resection = resection.tolist()
-            else:
-                # flatten 1-element arrays or cell arrays
-                resection = [str(r[0]) if hasattr(r, "__getitem__") else str(r) for r in resection]
-    except IndexError:
-        print("No resection info found in .mat file; leaving resection=None")
+    fs_preictal = pre["fs"]
+    fs_interictal = inter["fs"]
 
-    if resection is not None:
-        save_resection_pickle(resection, subject_id=subject_id, input_dir="data/input/")
+    labels = pre["labels"]
+    labels_interictal = inter["labels"]
+
+    resection = pre["resection"]
+    resection_interictal = inter["resection"]
+    soz = pre["soz"]
+    soz_interictal = inter["soz"]
+    assert soz == soz_interictal, "SOZ labels does not match between interictal and preictal files."
+    assert resection == resection_interictal, "Resection labels does not match between interictal and preictal files."
 
     # Resample to target_fs if needed
     if fs_preictal != target_fs:
-        n_samples = int(preictal_raw.shape[1] * target_fs / fs_preictal)
-        preictal_raw = resample(preictal_raw, n_samples, axis=1)
+        n_samples = int(eeg_preictal.shape[0] * target_fs / fs_preictal)
+        eeg_preictal = resample(eeg_preictal, n_samples, axis=0)
 
     if fs_interictal != target_fs:
-        n_samples = int(interictal_raw.shape[1] * target_fs / fs_interictal)
-        interictal_raw = resample(interictal_raw, n_samples, axis=1)
+        n_samples = int(eeg_interictal.shape[0] * target_fs / fs_interictal)
+        eeg_interictal = resample(eeg_interictal, n_samples, axis=0)
 
+    # Preictal
+    check_fs(
+        original_n_samples=pre["signal"].shape[0],
+        original_fs=fs_preictal,
+        new_n_samples=eeg_preictal.shape[0],
+        target_fs=target_fs,
+        name="Preictal"
+    )
+
+    # Interictal
+    check_fs(
+        original_n_samples=inter["signal"].shape[0],
+        original_fs=fs_interictal,
+        new_n_samples=eeg_interictal.shape[0],
+        target_fs=target_fs,
+        name="Interictal"
+    )
 
     # Align and trim channels
-    interictal, preictal, node_labels = match_channels(interictal_raw, preictal_raw)
+    interictal, preictal, common_labels = match_channels(eeg_interictal, labels_interictal, eeg_preictal, labels)
+    label_to_idx = {lbl: i for i, lbl in enumerate(common_labels)}
+
+    missing = set(resection) - set(label_to_idx)
+    if missing:
+        raise ValueError(f"Resection labels not found in nodes: {missing}")
+
+    resection_idx = [label_to_idx[lbl] for lbl in resection if lbl in label_to_idx]
+
+    # Save nodes and resection pickles so mat files don't have to be loaded again in game step
+    save_nodes_pickle(n_nodes=len(common_labels), subject_id=subject_id)
+    save_resection_pickle(resection_indices=resection_idx, subject_id=subject_id)
 
     # Transpose to (channels, samples)
     interictal = interictal.T
@@ -341,10 +424,7 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
     x = preictal_epochs + interictal_epochs
     y = [1]*len(preictal_epochs) + [0]*len(interictal_epochs)
     i = list(range(len(x)))
-    nodes = node_labels  # channel names
+    node_idx = list(range(len(common_labels)))
 
-    save_nodes_pickle(nodes, subject_id=subject_id, input_dir="data/input/")
-
-    prep = struct(y=np.array(y), i=np.array(i), x_prep=x, nodes=nodes, resection=resection)
+    prep = struct(y=np.array(y), i=np.array(i), x_prep=x, nodes=node_idx, resection=resection_idx)
     return prep
-
