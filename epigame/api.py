@@ -161,7 +161,8 @@ def epigame_predict_from_mat(
     connectivity_dir=connectivity_dir,
     game_scores_dir=game_scores_dir,
     fs=500,
-    max_sigma=4
+    max_sigma=4,
+    bands=bands
 ):
     """
     Run Epigame for a single subject and return the game score.
@@ -185,7 +186,8 @@ def epigame_predict_from_mat(
         interictal_path,
         preictal_path,
         connectivity_dir,
-        fs=fs
+        fs=fs,
+        bands=bands
     )
 
     # 2. Cross-validation (Connectivity change computation)
