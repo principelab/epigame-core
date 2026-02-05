@@ -45,7 +45,10 @@ score = epigame_predict_from_mat(
     preictal_path=preictal_path,
     main_dir=main_folder,
     connectivity_dir=connectivity_dir,
-    game_scores_dir=game_scores_dir
+    game_scores_dir=game_scores_dir,
+    fs=500,
+    max_sigma=4,
+    bands=[None,(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
 )
 
 print("\nEpigame run complete.")
