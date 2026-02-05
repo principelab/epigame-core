@@ -48,6 +48,7 @@ score = epigame_predict_from_mat(
     game_scores_dir=game_scores_dir,
     fs=500,
     max_sigma=4,
+    connectivity_measures = ["PAC"],
     bands=[None,(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
 )
 

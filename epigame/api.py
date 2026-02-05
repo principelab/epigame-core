@@ -21,6 +21,7 @@ def compute_connectivity_for_subject(
     preictal_path,
     connectivity_dir=connectivity_dir,
     fs=500,
+    connectivity_measure="PAC",
     bands=bands):
     """
     Generate Epigame connectivity dependencies for a single subject.
@@ -51,6 +52,7 @@ def compute_connectivity_for_subject(
         Connectivity files are written to disk and used as input for the
         Epigame simulation step.
     """
+    bands = [None] if connectivity_measure == "PAC" else bands
     for band in bands:
         prep = preprocess_from_mat(
             interictal_path,
@@ -58,10 +60,12 @@ def compute_connectivity_for_subject(
             target_fs=fs,
             band=band
         )
+    
         run_connectivity_matrices(
             prep,
             subject_id,
-            bands=band,
+            connectivity_measure=connectivity_measure,
+            band=band,
             output_dir=connectivity_dir
         )
 
@@ -69,6 +73,7 @@ def run_cv_for_subject(
     subject_id,
     connectivity_dir,
     results_dir,
+    connectivity_measure="PAC",
     freq_bands=bands
 ):
     """
@@ -86,25 +91,23 @@ def run_cv_for_subject(
     freq_bands : list of tuple or None
         Frequency bands to analyze. None for broadband.
     """
-    connectivity_measures = ["PAC", "SCR", "SCI", "PLV", "PLI", "CC"]
 
     for band in freq_bands:
         cm_suffix = "" if band is None else f"-{band[0]}-{band[1]}"
 
-        for measure in connectivity_measures:
-            prep_file = os.path.join(connectivity_dir, f"{subject_id}-{measure}{cm_suffix}.prep")
-            if not os.path.exists(prep_file):
-                print(f"Skipping missing file: {prep_file}")
-                continue
+        prep_file = os.path.join(connectivity_dir, f"{subject_id}-{connectivity_measure}{cm_suffix}.prep")
+        if not os.path.exists(prep_file):
+            print(f"Skipping missing file: {prep_file}")
+            continue
 
-            cm_struct = REc.load(prep_file).data
-            run_classification_pipeline(
-                cm_struct=cm_struct,
-                subject_id=subject_id,
-                measure=measure,
-                bands=band,
-                output_dir=results_dir
-            )
+        cm_struct = REc.load(prep_file).data
+        run_classification_pipeline(
+            cm_struct=cm_struct,
+            subject_id=subject_id,
+            measure=connectivity_measure,
+            bands=band,
+            output_dir=results_dir
+        )
 
 def run_game_for_subject(
     subject_id,
@@ -162,7 +165,8 @@ def epigame_predict_from_mat(
     game_scores_dir=game_scores_dir,
     fs=500,
     max_sigma=4,
-    bands=bands
+    connectivity_measures = ["PAC", "SCR", "SCI", "PLV", "PLI", "CC"],
+    bands=[None,(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
 ):
     """
     Run Epigame for a single subject and return the game score.
@@ -181,28 +185,33 @@ def epigame_predict_from_mat(
     """
 
     # 1. Connectivity
-    compute_connectivity_for_subject(
-        subject_id,
-        interictal_path,
-        preictal_path,
-        connectivity_dir,
-        fs=fs,
-        bands=bands
-    )
+    for measure in connectivity_measures:
 
-    # 2. Cross-validation (Connectivity change computation)
-    run_cv_for_subject(
-    subject_id,
-    connectivity_dir,
-    results_dir,
-    freq_bands=bands
-    )
+        compute_connectivity_for_subject(
+            subject_id,
+            interictal_path,
+            preictal_path,
+            connectivity_dir,
+            fs=fs,
+            connectivity_measure=measure,
+            bands=bands
+        )
+
+        # 2. Cross-validation (Connectivity change computation)
+        run_cv_for_subject(
+        subject_id,
+        connectivity_dir,
+        results_dir,
+        connectivity_measures=measure,
+        freq_bands=bands
+        )
 
     # 3. Aggregate cross-validation (CV) scores
     aggregate_cv_scores(
         result_dir=results_dir,
         subject_ids=[subject_id],
-        output_csv=csv_file
+        output_csv=csv_file,
+        freq_bands=bands
     )
 
     # 4. Game

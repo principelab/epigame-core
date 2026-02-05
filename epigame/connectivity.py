@@ -162,44 +162,34 @@ def analyze_epoch(epoch, method, dtail=True, **opts):
     return mat
 
 def connectivity_analysis(epochs, method, dtail=True, **opts):
-    print('Connectivity measure:', method.__name__)
-
-    if "bands" in opts and opts["bands"] is not None:
-        print(f"Frequency band: {opts['bands']}")
-
     return Parallel(n_jobs=-1)(
         delayed(analyze_epoch)(e, method, dtail, **opts) for e in epochs
     )
 
-def run_connectivity_matrices(epochs, subject_id, bands=None, output_dir="data/output/"):
-
-    connectivity_measures = ["PAC"] if bands is None else ["SCR", "SCI", "PLV", "PLI", "CC"]
-
-    for measure in connectivity_measures:
-
-        print(f"Running measure: {measure}")
+def run_connectivity_matrices(epochs, subject_id, connectivity_measure="PAC", band=None, output_dir="data/output/"):
+        print(f"Running measure: {connectivity_measure} | Band: {band}")
 
         cm = struct(y=epochs.y, i=epochs.i, nodes=epochs.nodes)
 
-        if measure == "SCR":
-            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=False, bands=bands))
-        elif measure == "SCI":
-            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=True, bands=bands))
-        elif measure == "PLV":
-            cm._set(X = connectivity_analysis(epochs.x_prep, phaselock, bands=bands))
-        elif measure == "PLI":
-            cm._set(X = connectivity_analysis(epochs.x_prep, phaselag, bands=bands))
-        elif measure == "CC":
-            cm._set(X = connectivity_analysis(epochs.x_prep, cross_correlation, bands=bands))
-        elif measure == "PAC":
+        if connectivity_measure == "SCR":
+            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=False))
+        elif connectivity_measure == "SCI":
+            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=True))
+        elif connectivity_measure == "PLV":
+            cm._set(X = connectivity_analysis(epochs.x_prep, phaselock))
+        elif connectivity_measure == "PLI":
+            cm._set(X = connectivity_analysis(epochs.x_prep, phaselag))
+        elif connectivity_measure == "CC":
+            cm._set(X = connectivity_analysis(epochs.x_prep, cross_correlation))
+        elif connectivity_measure == "PAC":
             cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500))
 
         os.makedirs(output_dir, exist_ok=True)
-        if bands is None: suffix = f"{subject_id}-{measure}.prep"
+        if band is None: suffix = f"{subject_id}-{connectivity_measure}.prep"
         else:
             # replace dot with underscore in band string (e.g., 0.1-4 -> 0_1-4)
-            band_str = f"{bands[0]}-{bands[1]}".replace('.', '_')
-            suffix = f"{subject_id}-{measure}-{band_str}.prep"
+            band_str = f"{band[0]}-{band[1]}".replace('.', '_')
+            suffix = f"{subject_id}-{connectivity_measure}-{band_str}.prep"
         REc(cm).save(os.path.join(output_dir, suffix))
 
 def sliding_window_epochs(filtered_data, fs, span_ms=1000, step_ms=125):
@@ -394,8 +384,9 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
     resection_idx = [label_to_idx[lbl] for lbl in resection if lbl in label_to_idx]
 
     # Save nodes and resection pickles so mat files don't have to be loaded again in game step
-    save_nodes_pickle(n_nodes=len(common_labels), subject_id=subject_id)
-    save_resection_pickle(resection_indices=resection_idx, subject_id=subject_id)
+    if not os.path.exists(os.path.join('data/input', f"{subject_id}_RESECTION.p")) or not os.path.exists(os.path.join('data/input', f"{subject_id}_NODES.p")):
+        save_nodes_pickle(n_nodes=len(common_labels), subject_id=subject_id)
+        save_resection_pickle(resection_indices=resection_idx, subject_id=subject_id)
 
     # Transpose to (channels, samples)
     interictal = interictal.T
