@@ -166,7 +166,7 @@ def epigame_predict_from_mat(
     fs=500,
     max_sigma=4,
     connectivity_measures = ["PAC", "SCR", "SCI", "PLV", "PLI", "CC"],
-    bands=[None,(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
+    bands=[(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
 ):
     """
     Run Epigame for a single subject and return the game score.
@@ -202,7 +202,7 @@ def epigame_predict_from_mat(
         subject_id,
         connectivity_dir,
         results_dir,
-        connectivity_measures=measure,
+        connectivity_measure=measure,
         freq_bands=bands
         )
 
@@ -211,6 +211,7 @@ def epigame_predict_from_mat(
         result_dir=results_dir,
         subject_ids=[subject_id],
         output_csv=csv_file,
+        connectivity_measures=connectivity_measures,
         freq_bands=bands
     )
 
