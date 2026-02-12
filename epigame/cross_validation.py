@@ -46,7 +46,7 @@ def run_classification_pipeline(cm_struct, subject_id, measure, bands=None, outp
     node_ids = cm_struct.nodes
     node_pairs = list(combinations(node_ids, 2))
 
-    print(f"Running classification for {measure} | {bands or 'PAC'}")
+    print(f"Running classification for {measure} | Band: {bands}")
 
     # Parallel classification for all node pairs
     results = Parallel(n_jobs=-1)(
