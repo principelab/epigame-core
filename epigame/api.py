@@ -91,23 +91,36 @@ def run_cv_for_subject(
     freq_bands : list of tuple or None
         Frequency bands to analyze. None for broadband.
     """
-
-    for band in freq_bands:
-        cm_suffix = "" if band is None else f"-{band[0]}-{band[1]}"
+    if connectivity_measure == "PAC":
+        cm_suffix = "" # PAC does not use frequency bands
 
         prep_file = os.path.join(connectivity_dir, f"{subject_id}-{connectivity_measure}{cm_suffix}.prep")
-        if not os.path.exists(prep_file):
-            print(f"Skipping missing file: {prep_file}")
-            continue
 
         cm_struct = REc.load(prep_file).data
         run_classification_pipeline(
             cm_struct=cm_struct,
             subject_id=subject_id,
             measure=connectivity_measure,
-            bands=band,
+            bands=None,
             output_dir=results_dir
         )
+    else:
+        for band in freq_bands:
+            cm_suffix = "" if band is None else f"-{band[0]}-{band[1]}"
+
+            prep_file = os.path.join(connectivity_dir, f"{subject_id}-{connectivity_measure}{cm_suffix}.prep")
+            if not os.path.exists(prep_file):
+                print(f"Skipping missing file: {prep_file}")
+                continue
+
+            cm_struct = REc.load(prep_file).data
+            run_classification_pipeline(
+                cm_struct=cm_struct,
+                subject_id=subject_id,
+                measure=connectivity_measure,
+                bands=band,
+                output_dir=results_dir
+            )
 
 def run_game_for_subject(
     subject_id,
