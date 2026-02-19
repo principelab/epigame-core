@@ -13,7 +13,7 @@ connectivity_dir = os.path.join(main_dir, "connectivity")
 results_dir = os.path.join(main_dir, "results")
 csv_file = os.path.join(main_dir, "cvs_pairs.csv")
 
-bands=[None,(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
+bands=[(1,4),(4,8),(8,13),(13,30),(30,70),(70,150)]
 
 def compute_connectivity_for_subject(
     subject_id,
