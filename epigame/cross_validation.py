@@ -40,10 +40,6 @@ def evaluate_nodes(pair, results):
     tag = f"{pair[0]}<->{pair[1]}"
     return (pair, tag, results)
 
-import os
-from itertools import combinations
-from joblib import Parallel, delayed
-
 def run_classification_pipeline(cm_struct, subject_id, measure, bands=None,
                                 output_dir="data/output/results/", random_state=random_state):
     """Runs SVM-based classification across all node pairs on one connectivity measure."""
@@ -68,7 +64,7 @@ def run_classification_pipeline(cm_struct, subject_id, measure, bands=None,
     node_ids = cm_struct.nodes
     node_pairs = list(combinations(node_ids, 2))
 
-    results = Parallel(n_jobs=-1)(
+    results = Parallel(n_jobs=-1, verbose=True)(
         delayed(evaluate_nodes)(
             pair, classify_epochs(cm_struct, pair, random_state=random_state)
         ) for pair in node_pairs
