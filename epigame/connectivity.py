@@ -167,30 +167,46 @@ def connectivity_analysis(epochs, method, dtail=True, **opts):
     )
 
 def run_connectivity_matrices(epochs, subject_id, connectivity_measure="PAC", band=None, output_dir="data/output/"):
-        print(f"Running measure: {connectivity_measure} | Band: {band}")
+    print(f"Running measure: {connectivity_measure} | Band: {band}")
 
-        cm = struct(y=epochs.y, i=epochs.i, nodes=epochs.nodes)
+    os.makedirs(output_dir, exist_ok=True)
 
-        if connectivity_measure == "SCR":
-            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=False))
-        elif connectivity_measure == "SCI":
-            cm._set(X = connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=True))
-        elif connectivity_measure == "PLV":
-            cm._set(X = connectivity_analysis(epochs.x_prep, phaselock))
-        elif connectivity_measure == "PLI":
-            cm._set(X = connectivity_analysis(epochs.x_prep, phaselag))
-        elif connectivity_measure == "CC":
-            cm._set(X = connectivity_analysis(epochs.x_prep, cross_correlation))
-        elif connectivity_measure == "PAC":
-            cm._set(X = connectivity_analysis(epochs.x_prep, PAC, fs=500))
+    if band is None:
+        suffix = f"{subject_id}-{connectivity_measure}.prep"
+    else:
+        band_str = f"{band[0]}-{band[1]}".replace('.', '_')
+        suffix = f"{subject_id}-{connectivity_measure}-{band_str}.prep"
 
-        os.makedirs(output_dir, exist_ok=True)
-        if band is None: suffix = f"{subject_id}-{connectivity_measure}.prep"
-        else:
-            # replace dot with underscore in band string (e.g., 0.1-4 -> 0_1-4)
-            band_str = f"{band[0]}-{band[1]}".replace('.', '_')
-            suffix = f"{subject_id}-{connectivity_measure}-{band_str}.prep"
-        REc(cm).save(os.path.join(output_dir, suffix))
+    save_path = os.path.join(output_dir, suffix)
+
+    # SKIP IF ALREADY COMPUTED
+    if os.path.exists(save_path):
+        print(f"Skipping: already exists -> {save_path}")
+        return
+
+    cm = struct(y=epochs.y, i=epochs.i, nodes=epochs.nodes)
+
+    if connectivity_measure == "SCR":
+        cm._set(X=connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=False))
+
+    elif connectivity_measure == "SCI":
+        cm._set(X=connectivity_analysis(epochs.x_prep, spectral_coherence, fs=500, imag=True))
+
+    elif connectivity_measure == "PLV":
+        cm._set(X=connectivity_analysis(epochs.x_prep, phaselock))
+
+    elif connectivity_measure == "PLI":
+        cm._set(X=connectivity_analysis(epochs.x_prep, phaselag))
+
+    elif connectivity_measure == "CC":
+        cm._set(X=connectivity_analysis(epochs.x_prep, cross_correlation))
+
+    elif connectivity_measure == "PAC":
+        cm._set(X=connectivity_analysis(epochs.x_prep, PAC, fs=500))
+
+    # save
+    REc(cm).save(save_path)
+    print(f"Saved: {save_path}")
 
 def sliding_window_epochs(filtered_data, fs, span_ms=1000, step_ms=125):
     """Split filtered data into overlapping epochs (channels × samples)."""

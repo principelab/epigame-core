@@ -40,30 +40,44 @@ def evaluate_nodes(pair, results):
     tag = f"{pair[0]}<->{pair[1]}"
     return (pair, tag, results)
 
-def run_classification_pipeline(cm_struct, subject_id, measure, bands=None, output_dir="data/output/results/", random_state=random_state):
+import os
+from itertools import combinations
+from joblib import Parallel, delayed
+
+def run_classification_pipeline(cm_struct, subject_id, measure, bands=None,
+                                output_dir="data/output/results/", random_state=random_state):
     """Runs SVM-based classification across all node pairs on one connectivity measure."""
+
+    os.makedirs(output_dir, exist_ok=True)
+    if bands is None:
+        suffix = f"{subject_id}-{measure}"
+    else:
+        band_str = f"{bands[0]}-{bands[1]}".replace('.', '_')
+        suffix = f"{subject_id}-{measure}-{band_str}"
+
+    filename = f"{suffix}.res"
+    save_path = os.path.join(output_dir, filename)
+
+    # skip if already computed
+    if os.path.exists(save_path):
+        print(f"Skipping classification (already exists): {filename}")
+        return None
+
+    print(f"Running classification for {measure} | Band: {bands}")
 
     node_ids = cm_struct.nodes
     node_pairs = list(combinations(node_ids, 2))
 
-    print(f"Running classification for {measure} | Band: {bands}")
-
-    # Parallel classification for all node pairs
     results = Parallel(n_jobs=-1)(
         delayed(evaluate_nodes)(
             pair, classify_epochs(cm_struct, pair, random_state=random_state)
         ) for pair in node_pairs
     )
-
-    # Wrap result in struct
     result_struct = struct(nodes=node_ids, pairs=results)
     REc_result = REc(result_struct)
 
-    # Save result
-    os.makedirs(output_dir, exist_ok=True)
-    suffix = f"{subject_id}-{measure}" + (f"-{bands[0]}-{bands[1]}" if bands else "")
-    filename = f"{suffix}.res"
-    REc_result.save(os.path.join(output_dir, filename))
+    # save
+    REc_result.save(save_path)
     print(f"Saved result to: {filename}")
 
     return result_struct
