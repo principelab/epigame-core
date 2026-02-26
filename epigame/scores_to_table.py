@@ -39,7 +39,7 @@ def get_score(sub_result, cm, target_sigma):
     return score
 
 
-def build_scores_table(score_dir, target_sigma=4, max_n_cm=4):
+def build_scores_table(score_dir=SCORE_DIR, target_sigma=4, max_n_cm=4):
 
     rows = []
 
@@ -89,7 +89,7 @@ def build_scores_table(score_dir, target_sigma=4, max_n_cm=4):
     df = pd.DataFrame(rows)
     df = df.sort_values(["subject_id", "n_CM", "CM_combination"])
 
-    SCORES_FILE = ("data/output/game_scores_combinations_up_to_4.csv")
+    SCORES_FILE = (f"data/output/game_scores_combinations_up_to_{max_n_cm}.csv")
     df.to_csv(SCORES_FILE, index=False)
     print(f"Saved table to {SCORES_FILE}")
     return df
