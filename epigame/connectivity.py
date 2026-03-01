@@ -409,8 +409,8 @@ def preprocess_from_mat(interictal_path, preictal_path, target_fs=500, band=None
     preictal = preictal.T
 
     # Filtering
-    interictal = notch(interictal, target_fs)
-    preictal = notch(preictal, target_fs)
+    interictal = notch(interictal, target_fs, freq=60.0)
+    preictal = notch(preictal, target_fs, freq=60.0)
 
     if band is not None:
         interictal = bandpass(interictal, band, fs=target_fs)
