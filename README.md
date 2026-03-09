@@ -19,3 +19,10 @@ conda create -n epigame python=3.10
 conda activate epigame
 pip install -e .
 python3 -m epigame.main
+```
+
+## Contributors
+Karla Ivankovic — Project lead and primary developer. Responsible for the full design and implementation of xPEC, including core architecture, algorithm development, data processing pipelines, testing and validation, backend, frontend, and documentation.
+<br>
+<br>
+Alessandro Principe — Author of data structures and utility functions implemented in utils.py.
