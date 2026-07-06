@@ -12,7 +12,6 @@ SCORE_DIR = os.path.join(OUTPUT_DIR, "game_scores") # Path to scores_subX.p
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "combinations_up_to_8.csv")
 
 INPUT_DIR = "data/input"
-RESECTION_PATH = os.path.join(INPUT_DIR, "RESECTION.p")
 OUTCOMES_PATH = os.path.join(INPUT_DIR, "outcomes.xlsx")
 
 TOP_PERCENTILE = 1.0
@@ -49,7 +48,7 @@ def get_subject_ids_from_excel(path):
 def load_resection(path):
     with open(path, 'rb') as f:
         resection = pickle.load(f)
-    print(f"[load] Resection loaded for {len(resection)} subjects.")
+    print(f"[load] Resection nodes loaded.")
     return resection
 
 # 1. Ro calculation
@@ -130,8 +129,6 @@ def run_gpu_combinations(subject_id, cm_dict, max_k):
 # 3. MAIN
 
 def main():
-    with open(RESECTION_PATH, 'rb') as f:
-        resection = pickle.load(f)
     
     all_results = []
     # Load subjects IDs from outcomes.xlsx
@@ -158,7 +155,7 @@ def main():
             with open(raw_path, 'rb') as f:
                 data = pickle.load(f)
             
-            resection_nodes = load_resection(RESECTION_PATH)
+            resection_nodes = load_resection(f"{INPUT_DIR}/{sid}_RESECTION.p")[sid]
             all_cms = sorted(set(cm for (cm, s) in data.keys()))
             
             for cm in all_cms:

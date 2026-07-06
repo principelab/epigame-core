@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 # PATHS & CONFIGURATION
 BASE_DIR = "data"
-RESECTION_PATH = os.path.join(BASE_DIR, "input/RESECTION.p")
+INPUT_DIR = "data/input"
 METADATA_PATH = os.path.join(BASE_DIR, "input/outcomes.xlsx")
 
 CACHE_DIR = os.path.join(BASE_DIR, "output/ro_cache")
@@ -35,9 +35,11 @@ CFG = dict(
 RNG = np.random.default_rng(CFG['seed'])
 
 
-def load_resection():
-    with open(RESECTION_PATH, 'rb') as f:
-        return pickle.load(f)
+def load_resection(path):
+    with open(path, 'rb') as f:
+        resection = pickle.load(f)
+    print(f"[load] Resection nodes loaded.")
+    return resection
 
 
 def compute_overlap(network, resection_nodes):
@@ -125,14 +127,14 @@ def main():
     # Load external data
     metadata = pd.read_excel(METADATA_PATH)
     outcomes = dict(zip(metadata['subject_id'], metadata['outcome']))
-    resection = load_resection()
     
     # Check Ro dir and generate files if missing
     print("Checking Ro cache and generating missing files...")
-    resection = load_resection()
 
     for sub_idx in outcomes.keys():
         save_path = os.path.join(CACHE_DIR, f'Ro_sub{sub_idx}.csv')
+
+        resection = load_resection(f"{INPUT_DIR}/{sub_idx}_RESECTION.p")[sub_idx]
         
         # Only generate if the file doesn't exist
         if not os.path.exists(save_path):
